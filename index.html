@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Leaflet Quick Start Guide Example</title>
+	<title>City Route 2</title>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
@@ -23,7 +23,7 @@
 		right: 10px;
 		z-index: 1;
 		background-color: #fff;
-		padding: 5px;
+		padding: 20px;
 		min-width: 275px;
 		-webkit-border-radius: 5px;
 		-moz-border-radius: 5px;
@@ -33,33 +33,52 @@
 		box-shadow:         -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
 	}
 	</style>
-	<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js"></script>
+	<script src="assets/js/jquery-1.11.0.min.js"></script>
+	<script src="assets/js/jquery-migrate-1.2.1.min.js"></script>
 	<link rel="stylesheet" href="http://bootswatch.com/cosmo/bootstrap.min.css" />
-	<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+	<script src="assets/js/bootstrap-3.2.0.min.js"></script>
 	<script src="assets/js/jquery.xml2json.js"></script>
     <script type='text/javascript' src='http://rawgit.com/bnji/simplemvc/master/simple.mvc.js'></script>
 	<script type='text/javascript' src='http://rawgit.com/bnji/simplemvc/master/simple.mvc.json.js'></script>
 	<script src="http://rawgit.com/bnji/simplemvc/master/examples/debug.js"></script>
 	<script src="assets/js/json2.js"></script>
+	<script type="text/javascript"> if (!window['console']) console = {log: function() {}}; </script>
+    <script>
+    //$ = {}
+    </script>
+    <!--//end IE fixes -->
+    <script src="http://rawgit.com/bnji/simplemvc/master/lib/jstorage.min.js"></script>
+
 </head>
 <body>
+	<!--[if lt IE 10]>
+	    <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+	<![endif]-->
+
 	<div class="container">
       <h1 id="nodata" style="display:none;">Ongir bussar koyra í løtuni</h1>
     </div><!-- /.container -->
 
     <div id="menu">
     	<form class="form-horizontal" role="form">
-  			<select id="selectBusLine" class="form-control">
-			  <option value="-1">Show all</option>
-			  <option value="Red">Bussleið 1</option>
-			  <option value="Green">Bussleið 2</option>
-			  <option value="Blue">Bussleið 3</option>
-			  <option value="Orange">Bussleið 4</option>
-			  <option value="Violet">Bussleið 5</option>
-			</select>
-			<label>
-		    	<input id="showBusStops" type="checkbox" checked="checked"> Show bus stops?
-		    </label>
+  			<div class="form-group">
+  				<select id="selectBusLine" class="form-control">
+				  <option value="-1">Show all</option>
+				  <option value="Red">Bussleið 1</option>
+				  <option value="Green">Bussleið 2</option>
+				  <option value="Blue">Bussleið 3</option>
+				  <option value="Orange">Bussleið 4</option>
+				  <option value="Violet">Bussleið 5</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label>
+			    	<input id="showBusStops" type="checkbox" checked="checked"> Show bus stops?
+			    </label>
+			</div>
+			<div class="form-group">
+		    	<button id="findMe" type="button" class="btn btn-primary btn-sm">Find me</button>
+		    </div>
     	</form>
     </div>
 
@@ -104,10 +123,23 @@
 
 			init(function(result) {
 				if(result) {
-					loadBusStops();
-					//$('#nodata').hide();
-					$('#map').show();
-					update();
+					loadBusStops(function() {
+						//$('#nodata').hide();
+						$('#map').show();
+						update();
+
+
+						setTimeout(function() {
+							var busColor = Store.get("busColor");
+							var showBusStops = Boolean(Store.get("showBusStops"));
+							changeBusLine(busColor);
+							toggleBusStops(showBusStops, busColor);
+							//console.log(busColor + ", " + showBusStops);
+							// Update UI with bus color
+							$('#selectBusLine').val(busColor);
+							$('#showBusStops').prop('checked', showBusStops);
+						}, 1000);
+					});
 				}
 				else {
 					$('#nodata').show();
@@ -116,28 +148,44 @@
 			});
 
 			$('#selectBusLine').change(function() {
-				var color = this.value;
-				$.each(busses, function(k,v) {
-					if(color === '-1') {
-						v['canDrawUI'] = true;
-					}
-					else {
-						v['canDrawUI'] = v['lineColor'] === color;
-					}
-				});
-				toggleBusStops($('#showBusStops'));
+				console.log("#selectBusLine changed");
+				var busColor = this.value;
+				changeBusLine(busColor);
+				Store.save("busColor", busColor);
+				console.log(Store.get("busColor"));
+				toggleBusStops($('#showBusStops').prop('checked'), $('#selectBusLine option:selected').val());
 			});
 
 			$('#showBusStops').click(function() {
-				toggleBusStops(this);
+				toggleBusStops($(this).prop('checked'), $('#selectBusLine option:selected').val());
+			});
+
+			$('#findMe').click(function() {
+				findMe();
 			});
 		});
 
-		function toggleBusStops(el) {
-			var isChecked = $(el).prop('checked');
+		function changeBusLine(busColor) {
+			$.each(busses, function(k,v) {
+				if(busColor === '-1') {
+					v['canDrawUI'] = true;
+				}
+				else {
+					v['canDrawUI'] = v['lineColor'] === busColor;
+				}
+			});
+		}
+
+		function findMe() {
+			map.locate({
+				setView : true,
+				maxZoom : 17
+			});
+		}
+
+		function toggleBusStops(isChecked, selectedColor) {
 			var opacity = isChecked === true ? 1 : 0;
 			$.each(busStops, function(k,v) {
-				var selectedColor = $('#selectBusLine option:selected').val();
 				var busColor = v['color'];
 				if(selectedColor === busColor || selectedColor === '-1') {
 					v['marker'].setOpacity(opacity);
@@ -146,9 +194,11 @@
 					v['marker'].setOpacity(0);
 				}
 			});
+
+			Store.save("showBusStops", isChecked);
 		}
 
-		function loadBusStops() {
+		function loadBusStops(callbackSuccess) {
 			getStationDataAsArray(function(data) {
 				$.each(data, function(k,station) {
 
@@ -159,13 +209,14 @@
 								//console.log(busStopLineId);
 								var busNoAndColor = lineIdToBusNoAndColor(busStopLineId);
 								if(busNoAndColor !== null) {
-									busStops.Add(new BusStop(station, busNoAndColor));
+									busStops.Add(new BusStop(busStop, station, busNoAndColor));
 								}
 							}
 						});
 					});
 				});
 			});
+			callbackSuccess();
 		}
 
 		function lineIdToBusNoAndColor(_lineId) {
@@ -233,11 +284,17 @@
 							var icon = getMapIcon(bus);
 							var marker = busses[k]['marker'];
 							if(busses[k]['canDrawUI']) {
+								var latLng = [bus['lat'], bus['lng']];// getLatLng(bus['lat'], bus['lng']);
 								// Show the bus
 								marker.setOpacity(1);
 								marker.setIcon(icon);
 								marker.setPopupContent(getMarkerPopupContent(bus));
-								marker.setLatLng(getLatLng(bus['lat'], bus['lng']));
+								marker.setLatLng(latLng);
+
+								//getRouteData(latlng);
+								//addCircle(latLng, 10);
+								//console.log(latLng);
+
 							}
 							else {
 								// Hide the bus
@@ -249,6 +306,10 @@
 				});
 				//console.log(busses.Size());
 			}, 1000);
+		}
+
+		function addCircle(latlng, size) {
+			L.circle(latlng, size).addTo(map);
 		}
 
 		function getMapIcon(bus) {
@@ -285,36 +346,38 @@
 	    	this.busNo = v['busNo'];
 	    	this.busId = v['busId'];
 			this.marker = _marker;
+			this.marker.setOpacity(0);
 			this.canDrawUI = _canDrawUI;
 		}
 
-		function BusStop(_station, _busNoAndColor) {
+		function BusStop(_busStop, _station, _busNoAndColor) {
 			this.number = _busNoAndColor['no'];
 			this.color = _busNoAndColor['color'];
 			this.data = _station;
-			this.marker = createBusStopMarker(_station, _busNoAndColor['color']);
+			this.marker = createBusStopMarker(_busStop, _station, _busNoAndColor['color']);
+			this.marker.setOpacity(0);
 		}
 
-		function createBusStopMarker(station, busStopIconColor) {
+		function createBusStopMarker(_busStop, station, busStopIconColor) {
 			var busStopIconRelativePath = 'assets/icons/busStop/';
 			var busStopIconNo = '/8.png';
 
 			var popup = L.popup({
 							autoPan: false,
 							keepInView: false,
-							//autoPanPadding: L.point(w/2, h/2),
 							closeOnClick: true
 						});
-				popup.setContent("<b>" + station['name'] + "</b>");
+			//console.log(station);
+				popup.setContent("<b>" + station['name'] + "</b><br /> Time left: " + _busStop['timeLeft']);
 
-	      		var marker = L.marker(getLatLng(station['lat'], station['lng']));
-	      			marker
-	      				.setIcon(L.icon({
-							iconUrl: busStopIconRelativePath + busStopIconColor + busStopIconNo,
-							iconSize: [32, 37]
-						}))
-	      				.addTo(map)
-	      				.bindPopup(popup);
+      		var marker = L.marker(getLatLng(station['lat'], station['lng']));
+      			marker
+      				.setIcon(L.icon({
+						iconUrl: busStopIconRelativePath + busStopIconColor + busStopIconNo,
+						iconSize: [32, 37]
+					}))
+      				.addTo(map)
+      				.bindPopup(popup);
 
 	      	return marker;
 		}
@@ -422,6 +485,6 @@
 		  });
 		}
     </script>
-
+    <script src="assets/js/store.js"></script>
 </body>
 </html>
