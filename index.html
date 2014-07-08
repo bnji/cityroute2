@@ -132,12 +132,15 @@
 						setTimeout(function() {
 							var busColor = Store.get("busColor");
 							var showBusStops = Boolean(Store.get("showBusStops"));
-							changeBusLine(busColor);
-							toggleBusStops(showBusStops, busColor);
-							//console.log(busColor + ", " + showBusStops);
 							// Update UI with bus color
-							$('#selectBusLine').val(busColor);
-							$('#showBusStops').prop('checked', showBusStops);
+							if(busColor !== null) {
+								changeBusLine(busColor);
+								$('#selectBusLine').val(busColor);
+							}
+							if(showBusStops !== null) {
+								toggleBusStops(showBusStops, busColor);
+								$('#showBusStops').prop('checked', showBusStops);
+							}
 						}, 1000);
 					});
 				}
