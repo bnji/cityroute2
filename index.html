@@ -125,75 +125,70 @@
 						v['canDrawUI'] = v['lineColor'] === color;
 					}
 				});
+				toggleBusStops($('#showBusStops'));
 			});
 
 			$('#showBusStops').click(function() {
-				var isChecked = $(this).prop('checked');
-				var opacity = isChecked === true ? 1 : 0;
-				$.each(busStops, function(k,v) {
-					//console.log(v);
-					v['marker'].setOpacity(opacity);
-				});
+				toggleBusStops(this);
 			});
 		});
+
+		function toggleBusStops(el) {
+			var isChecked = $(el).prop('checked');
+			var opacity = isChecked === true ? 1 : 0;
+			$.each(busStops, function(k,v) {
+				var selectedColor = $('#selectBusLine option:selected').val();
+				var busColor = v['color'];
+				if(selectedColor === busColor || selectedColor === '-1') {
+					v['marker'].setOpacity(opacity);
+				}
+				else {
+					v['marker'].setOpacity(0);
+				}
+			});
+		}
 
 		function loadBusStops() {
 			getStationDataAsArray(function(data) {
 				$.each(data, function(k,station) {
 
-					var busStopIcon = 'Red';
-					if(!jQuery.isEmptyObject(station['info'])) {
-						var busStopLineId = station['info']['bus']['lineId'];
-						if(busStopLineId === undefined) {
-							busStopLineId = station['info']['bus'][0]['lineId'];
-						}
-						console.log(busStopLineId);
-						var busNoAndColor = lineIdToBusNoAndColor(busStopLineId);
-						//console.log(busNoAndColor);
-						/*if(busNoAndColor !== null) {
-							busStopIcon = busNoAndColor[1];
-						}*/
-						//console.log(busStopIcon);
-					}
-					else {
-						//console.log(station);
-					}
-					var popup = L.popup({
-								autoPan: false,
-								keepInView: false,
-								//autoPanPadding: L.point(w/2, h/2),
-								closeOnClick: true
-							});
-					popup.setContent("<b>" + station['name'] + "</b>");
-
-		      		var marker = L.marker(getLatLng(station['lat'], station['lng']));
-		      			marker
-		      				.setIcon(L.icon({
-								iconUrl: 'assets/icons/busStop/' + busStopIcon + '/8.png',
-								iconSize: [32, 37]
-							}))
-		      				.addTo(map)
-		      				.bindPopup(popup);
-
-		      		busStops.Add(new BusStop(station, marker));
+					$.each(station['info'], function(k,v) {
+						$.each(v, function(k,busStop) {
+							var busStopLineId = busStop['lineId'];
+							if(busStopLineId !== undefined) {
+								//console.log(busStopLineId);
+								var busNoAndColor = lineIdToBusNoAndColor(busStopLineId);
+								if(busNoAndColor !== null) {
+									busStops.Add(new BusStop(station, busNoAndColor));
+								}
+							}
+						});
+					});
 				});
 			});
 		}
 
-		function lineIdToBusNoAndColor(lineId) {
+		function lineIdToBusNoAndColor(_lineId) {
+			var lineId = parseInt(_lineId);
+			var result = null;
 			switch(lineId) {
 				case 241:
-					return [1, 'Red'];
-				case 126:
-					return [2, 'Green'];
+					result = {no: 1, color: 'Red'};
+					break;
+				case 242:
+					result = {no: 2, color: 'Green'};
+					break;
 				case 243:
-					return [3, 'Blue'];
-				case 137:
-					return [4, 'Orange'];
-				case 125:
-					return [5, 'Violet'];
+					result = {no: 3, color: 'Blue'};
+					break;
+				case 261:
+					result = {no: 4, color: 'Orange'};
+					break;
+				case 301:
+					result = {no: 5, color: 'Violet'};
+					break;
 			}
-			return null;
+			return result;
 		}
 
 		function init(callbackSuccess) {
@@ -293,9 +288,35 @@
 			this.canDrawUI = _canDrawUI;
 		}
 
-		function BusStop(_data, _marker) {
-			this.data = _data;
-			this.marker = _marker;
+		function BusStop(_station, _busNoAndColor) {
+			this.number = _busNoAndColor['no'];
+			this.color = _busNoAndColor['color'];
+			this.data = _station;
+			this.marker = createBusStopMarker(_station, _busNoAndColor['color']);
+		}
+
+		function createBusStopMarker(station, busStopIconColor) {
+			var busStopIconRelativePath = 'assets/icons/busStop/';
+			var busStopIconNo = '/8.png';
+
+			var popup = L.popup({
+							autoPan: false,
+							keepInView: false,
+							//autoPanPadding: L.point(w/2, h/2),
+							closeOnClick: true
+						});
+				popup.setContent("<b>" + station['name'] + "</b>");
+
+	      		var marker = L.marker(getLatLng(station['lat'], station['lng']));
+	      			marker
+	      				.setIcon(L.icon({
+							iconUrl: busStopIconRelativePath + busStopIconColor + busStopIconNo,
+							iconSize: [32, 37]
+						}))
+	      				.addTo(map)
+	      				.bindPopup(popup);
+
+	      	return marker;
 		}
 
 		function getIcon(bus) {
@@ -359,7 +380,7 @@
 		}
 
 		function getBusDataAsJson(callback) {
-			getWSData('http://kt-husid-webapp.cloudapp.net/cityroute2/proxy.php', 'buses', function(xml) {
+			getWSData('http://168.63.68.113/cityroute2/proxy.php', 'buses', function(xml) {
 				// Parse XML to JSON
 			    callback($.xml2json(xml));
 			});
