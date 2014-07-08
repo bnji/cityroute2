@@ -37,10 +37,19 @@
 	  margin-left: auto;
 	  margin-right: auto;
 	}
-	.background-image-mobile {
-		background-image: url('assets/img/background-mobile.png');
-		background-size: cover;
-    	background-repeat: no-repeat;
+	@media (max-width: 600px) {
+		.background-image {
+			background-image: url('assets/img/background-mobile.png');
+			background-size: cover;
+	    	background-repeat: no-repeat;
+		}
+	}
+	@media (min-width: 600px) {
+		.background-image {
+			background-image: url('assets/img/background-desktop.png');
+			background-size: cover;
+	    	background-repeat: no-repeat;
+		}
 	}
 	</style>
 	<script src="assets/js/jquery-1.11.0.min.js"></script>
@@ -60,7 +69,7 @@
     <script src="http://rawgit.com/bnji/simplemvc/master/lib/jstorage.min.js"></script>
 
 </head>
-<body class="background-image-mobile">
+<body class="background-image">
 	<!--[if lt IE 10]>
 	    <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
 	<![endif]-->
@@ -71,7 +80,7 @@
 		</div>
     </div><!-- /.container -->
 
-    <div id="menu">
+    <div id="menu" style="display:none;">
     	<form class="form-inline" role="form">
 			<select id="selectBusLine" class="form-control input-sm">
 			  <option value="-1">Show all</option>
@@ -132,9 +141,10 @@
 
 			init(function(result) {
 				if(result) {
-					$('body').removeClass('background-image-mobile');
+					$('body').removeClass('background-image');
 					loadBusStops(function() {
 						//$('#nodata').hide();
+						$('#menu').show();
 						$('#map').show();
 						update();
 
@@ -155,7 +165,6 @@
 					});
 				}
 				else {
-					$('#menu').hide();
 					$('#nodata').show();
 					//$('#map').show();
 				}
