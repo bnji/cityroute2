@@ -23,14 +23,24 @@
 		right: 10px;
 		z-index: 1;
 		background-color: #fff;
-		padding: 20px;
-		min-width: 275px;
+		padding: 5px;
+		min-width: 180px;
 		-webkit-border-radius: 5px;
 		-moz-border-radius: 5px;
 		border-radius: 5px;
 		-webkit-box-shadow: -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
 		-moz-box-shadow:    -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
 		box-shadow:         -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
+	}
+	.center-block {
+	  display: block;
+	  margin-left: auto;
+	  margin-right: auto;
+	}
+	.background-image-mobile {
+		background-image: url('assets/img/background-mobile.png');
+		background-size: cover;
+    	background-repeat: no-repeat;
 	}
 	</style>
 	<script src="assets/js/jquery-1.11.0.min.js"></script>
@@ -50,35 +60,33 @@
     <script src="http://rawgit.com/bnji/simplemvc/master/lib/jstorage.min.js"></script>
 
 </head>
-<body>
+<body class="background-image-mobile">
 	<!--[if lt IE 10]>
 	    <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
 	<![endif]-->
 
-	<div class="container">
-      <h1 id="nodata" style="display:none;">Ongir bussar koyra í løtuni</h1>
+	<div class="container" id="nodata" style="display:none;">
+		<div class="center-block">
+			<h1>Ongir bussar koyra í løtuni</h1>
+		</div>
     </div><!-- /.container -->
 
     <div id="menu">
+    	<form class="form-inline" role="form">
+			<select id="selectBusLine" class="form-control input-sm">
+			  <option value="-1">Show all</option>
+			  <option value="Red">Bussleið 1</option>
+			  <option value="Green">Bussleið 2</option>
+			  <option value="Blue">Bussleið 3</option>
+			  <option value="Orange">Bussleið 4</option>
+			  <option value="Violet">Bussleið 5</option>
+			</select>
+			<button id="findMe" type="button" class="btn btn-primary btn-sm">Find me</button>
+    	</form>
     	<form class="form-horizontal" role="form">
-  			<div class="form-group">
-  				<select id="selectBusLine" class="form-control">
-				  <option value="-1">Show all</option>
-				  <option value="Red">Bussleið 1</option>
-				  <option value="Green">Bussleið 2</option>
-				  <option value="Blue">Bussleið 3</option>
-				  <option value="Orange">Bussleið 4</option>
-				  <option value="Violet">Bussleið 5</option>
-				</select>
-			</div>
-			<div class="form-group">
-				<label>
-			    	<input id="showBusStops" type="checkbox" checked="checked"> Show bus stops?
-			    </label>
-			</div>
-			<div class="form-group">
-		    	<button id="findMe" type="button" class="btn btn-primary btn-sm">Find me</button>
-		    </div>
+			<label>
+		    	<input id="showBusStops" type="checkbox" checked="checked"> Show bus stops?
+		    </label>
     	</form>
     </div>
 
@@ -103,9 +111,10 @@
 
 		L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
 			maxZoom: 19,
-			attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+			attribution: '<a href="http://bnji.github.com">Benjamin Hammer</a> | <a href="http://citypulse.torshavn.fo">Citypulse</a>',
+			/*attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
 				'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-				'Imagery © <a href="http://mapbox.com">Mapbox</a>',
+				'Imagery © <a href="http://mapbox.com">Mapbox</a>',*/
 			id: 'examples.map-i86knfo3'
 		}).addTo(map);
 
@@ -123,6 +132,7 @@
 
 			init(function(result) {
 				if(result) {
+					$('body').removeClass('background-image-mobile');
 					loadBusStops(function() {
 						//$('#nodata').hide();
 						$('#map').show();
@@ -145,6 +155,7 @@
 					});
 				}
 				else {
+					$('#menu').hide();
 					$('#nodata').show();
 					//$('#map').show();
 				}
