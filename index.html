@@ -118,6 +118,66 @@
 
 		//map.on('click', onMapClick);
 
+		var homeAddressMarker;
+		var router,
+		    waypoints = [],
+		    line;
+
+		map.on('locationfound', function(data) {
+			var lat = data['latitude'];
+			var lng = data['longitude'];
+
+			//http://wiki.openstreetmap.org/wiki/Nominatim#Reverse%5FGeocoding%5F.2F%5FAddress%5Flookup
+			getWSData('http://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json', '', 'json', function(json) {
+				//console.log(json);
+				var lat = parseFloat(json['lat']);
+				var lng = parseFloat(json['lon']);
+				var latLng = getLatLng(lat, lng);
+				var address = json['address']; // country, country_code, house_number, postcode, road, state, town
+				var popup = L.popup({
+							autoPan: false,
+							keepInView: false,
+							closeOnClick: true
+						});
+
+					popup.setContent("<b>" + address['road'] + "</b><br />" + address['postcode'] + " " + address['town']);
+
+				if(homeAddressMarker !== undefined) {
+					map.removeLayer(homeAddressMarker);
+				}
+
+				homeAddressMarker = L.marker(latLng);
+	      			homeAddressMarker
+	      				.setIcon(L.icon({
+							iconUrl: 'assets/icons/house/1.png',
+							iconSize: [32, 37]
+						}))
+	      				.addTo(map)
+	      				.bindPopup(popup);
+
+	      		waypoints.push({
+			    	latLng: latLng
+			    });
+			    waypoints.push({
+			    	latLng: L.latLng(62.013030754675505, -6.78455114364624)
+			    });
+
+			    router.route(waypoints, function(err, routes) {
+		            if (line) {
+		                map.removeLayer(line);
+		            }
+
+		            if (err) {
+		                alert(err);
+		            } else {
+		                line = L.Routing.line(routes[0]).addTo(map);
+		            }
+		        });
+
+			});
+			//console.log(e);
+		});
+
 		L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
 			maxZoom: 19,
 			attribution: '<a href="http://bnji.github.com">Benjamin Hammer</a> | <a href="http://citypulse.torshavn.fo">Citypulse</a>',
@@ -140,6 +200,9 @@
 			$('#map').hide();
 
 			init(function(result) {
+				router = L.Routing.osrm()
+
+
 				if(result) {
 					$('body').removeClass('background-image');
 					loadBusStops(function() {
@@ -186,6 +249,33 @@
 			$('#findMe').click(function() {
 				findMe();
 			});
+
+
+
+
+		    /*map.on('click', function(e) {
+			    waypoints.push({latLng: e.latlng});
+			    if (waypoints.length >= 2) {
+			        router.route(waypoints, function(err, routes) {
+			            if (line) {
+			                map.removeLayer(line);
+			            }
+
+			            if (err) {
+			                alert(err);
+			            } else {
+			                line = L.Routing.line(routes[0]).addTo(map);
+			            }
+			        });
+			    }
+			});*/
+
+			/*L.Routing.osrm({
+			    waypoints: [
+			        L.latLng(62.01574938688206, -6.787834167480469),
+			        L.latLng(62.013030754675505, -6.78455114364624)
+			    ]
+			}).addTo(map);*/
 		});
 
 		function changeBusLine(busColor) {
@@ -466,7 +556,7 @@
 		}
 
 		function getBusDataAsJson(callback) {
-			getWSData('http://168.63.68.113/cityroute2/proxy.php', 'buses', function(xml) {
+			getWSData('http://168.63.68.113/cityroute2/proxy.php', 'buses', 'xml', function(xml) {
 				// Parse XML to JSON
 			    callback($.xml2json(xml));
 			});
@@ -475,7 +565,7 @@
 		function getStationDataAsJson(callback) {
 			//getWSData('http://localhost/dev/cityroute2/proxy.php', 'stations', function(xml) {
 			//getWSData('http://kt-husid-webapp.cloudapp.net/cityroute2/proxy.php', 'stations', function(xml) {
-			getWSData('assets/data/stations.xml', 'stations', function(xml) {
+			getWSData('assets/data/stations.xml', 'stations', 'xml', function(xml) {
 				// Parse XML to JSON
 			    callback($.xml2json(xml));
 			});
@@ -483,7 +573,7 @@
 
 		// Method used to retreive data from REST service, if CORS is not enabled, it
 		// will fail...
-		function getWSData(url, query, callback) {
+		function getWSData(url, query, _dataType, callback) {
 			/*$.ajax({
 			  url: url,
 			  dataType: 'xml'
@@ -495,7 +585,7 @@
 		    type: 'GET',
 		    cache: false,
 		    crossDomain: true,
-		    dataType: 'xml',
+		    dataType: _dataType,
 		    data: {'q': query},
 		    url: url,
 		    success: function(xml) {
@@ -509,5 +599,7 @@
 		}
     </script>
     <script src="assets/js/store.js"></script>
+    <link rel="stylesheet" href="assets/css/leaflet-routing-machine.css" />
+	<script src="assets/js/leaflet-routing-machine.js"></script>
 </body>
 </html>
