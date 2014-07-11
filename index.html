@@ -99,6 +99,8 @@
     	</form>
     </div>
 
+    <!--<img id="img1" src="https://www.google.com/images/srpr/logo11w.png" />-->
+
 	<div id="map"</div>
 	<script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
 	<script>
@@ -118,7 +120,39 @@
 
 		//map.on('click', onMapClick);
 
+		if (window.DeviceOrientationEvent) {
+			// Listen for the event and handle DeviceOrientationEvent object
+  			window.addEventListener('deviceorientation', function(eventData) {
+			    // gamma is the left-to-right tilt in degrees, where right is positive
+			    var tiltLR = eventData.gamma;
+
+			    // beta is the front-to-back tilt in degrees, where front is positive
+			    var tiltFB = eventData.beta;
+
+			    // alpha is the compass direction the device is facing in degrees
+			    var dir = eventData.alpha
+
+			    // call our orientation event handler
+			    //deviceOrientationHandler(tiltLR, tiltFB, dir);
+			    console.log(dir);
+			    //console.log(homeAddressMarker);
+  				//var img = homeAddressMarker['_icon'];
+  				//console.log(img);
+  				if(currentLocationMarker !== undefined) {
+  					//homeAddressMarker.foobar();
+  					console.log(currentLocationMarker);
+  					currentLocationMarker.rotate(dir);
+  					//console.log(homeAddressMarker['marker']);
+  					//$(homeAddressMarker['_icon']).css('-webit-transform','rotate(90deg)')
+	  				//homeAddressMarker['marker'].setIconAngle(dir);
+	  			}
+  				//$(img).rotate(dir);
+			  }, false);
+		}
+
+		var currentLocationMarker;
 		var homeAddressMarker;
+		var canLocatePerson = true;
 		var router,
 		    waypoints = [],
 		    line;
@@ -126,56 +160,13 @@
 		map.on('locationfound', function(data) {
 			var lat = data['latitude'];
 			var lng = data['longitude'];
+			console.log("Lat: " + lat + ", Lng: " + lng);
+			locatePerson(lat, lng);
 
-			//http://wiki.openstreetmap.org/wiki/Nominatim#Reverse%5FGeocoding%5F.2F%5FAddress%5Flookup
-			getWSData('http://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json', '', 'json', function(json) {
-				//console.log(json);
-				var lat = parseFloat(json['lat']);
-				var lng = parseFloat(json['lon']);
-				var latLng = getLatLng(lat, lng);
-				var address = json['address']; // country, country_code, house_number, postcode, road, state, town
-				var popup = L.popup({
-							autoPan: false,
-							keepInView: false,
-							closeOnClick: true
-						});
-
-					popup.setContent("<b>" + address['road'] + "</b><br />" + address['postcode'] + " " + address['town']);
-
-				if(homeAddressMarker !== undefined) {
-					map.removeLayer(homeAddressMarker);
-				}
-
-				homeAddressMarker = L.marker(latLng);
-	      			homeAddressMarker
-	      				.setIcon(L.icon({
-							iconUrl: 'assets/icons/house/1.png',
-							iconSize: [32, 37]
-						}))
-	      				.addTo(map)
-	      				.bindPopup(popup);
-
-	      		waypoints.push({
-			    	latLng: latLng
-			    });
-			    waypoints.push({
-			    	latLng: L.latLng(62.013030754675505, -6.78455114364624)
-			    });
-
-			    router.route(waypoints, function(err, routes) {
-		            if (line) {
-		                map.removeLayer(line);
-		            }
-
-		            if (err) {
-		                alert(err);
-		            } else {
-		                line = L.Routing.line(routes[0]).addTo(map);
-		            }
-		        });
-
-			});
-			//console.log(e);
+			if(currentLocationMarker !== undefined) {
+				currentLocationMarker.setLatLng(getLatLng(lat, lng));
+			}
+			map.locate();
 		});
 
 		L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
@@ -190,6 +181,11 @@
 		function onMapClick(e) {
 			console.log(e.latlng);
 		}
+
+		/*map.on('popupopen', function(e) {
+		  var marker = e;
+		  console.log(marker);
+		});*/
 
 		//var bus1 = L.marker(center).addTo(map);//.bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
 
@@ -278,6 +274,104 @@
 			}).addTo(map);*/
 		});
 
+		function locatePerson(lat, lng) {
+			if(canLocatePerson) {
+				canLocatePerson = false;
+				//var lat = data['latitude'];
+				//var lng = data['longitude'];
+
+				//http://wiki.openstreetmap.org/wiki/Nominatim#Reverse%5FGeocoding%5F.2F%5FAddress%5Flookup
+				getWSData('http://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json', '', 'json', function(json) {
+					//console.log(json);
+					var lat = parseFloat(json['lat']);
+					var lng = parseFloat(json['lon']);
+					var latLngFrom = getLatLng(lat, lng);
+					var address = json['address']; // country, country_code, house_number, postcode, road, state, town
+
+					var latLngTo;
+					var closestBusStop;
+					var shortestDistanceFound = Number.MAX_VALUE;
+					// busStop: [color, data: [id, info:[bus:[]], isStation, lat, lng, name, prevStationId, sms], marker: [..], number]
+					$.each(busStops, function(k,v) {
+						var latLng = getLatLng(v['data']['lat'], v['data']['lng']);
+						var distance = latLngFrom.distanceTo(latLng);
+						if(distance < shortestDistanceFound) {
+							shortestDistanceFound = distance;
+							closestBusStop = v;
+							latLngTo = latLng;
+						}
+					});
+					console.log("Shortest distance: " + shortestDistanceFound + ", bus stop name: " + closestBusStop['data']['name']);
+					//console.log(closestBusStop);
+
+					removeMarker(homeAddressMarker);
+					homeAddressMarker = addMarker(latLngFrom,
+												  0,
+												  "<b>" + address['road'] + "</b><br />" + address['postcode'] + " " + address['town'],
+												  'assets/icons/house/1.png',
+												  [32, 37]);
+
+					removeMarker(currentLocationMarker);
+					currentLocationMarker = addMarker(latLngFrom,
+												  0,
+												  "This is you",
+												  'assets/icons/person/1.png',
+												  [32, 37]);
+
+
+					addWayPoints([latLngFrom, latLngTo]);
+
+				    router.route(waypoints, function(err, routes) {
+			            if (line) {
+			                map.removeLayer(line);
+			            }
+
+			            if (err) {
+			                alert(err);
+			            } else {
+			                line = L.Routing.line(routes[0]).addTo(map);
+			            }
+			        });
+
+				});
+			}
+		}
+
+		function addWayPoints(list) {
+			$.each(list, function(k,v) {
+				waypoints.push({
+			    	latLng: v
+			    });
+			});
+		}
+
+		function removeMarker(marker) {
+			if(marker !== undefined) {
+				map.removeLayer(marker);
+			}
+		}
+
+		function addMarker(_latlng, _angle, _popupContent, _iconUrl, _iconSize) {
+
+			var popup = L.popup({
+				autoPan: false,
+				keepInView: false,
+				closeOnClick: true
+			});
+			popup.setContent(_popupContent);
+
+			var marker = L.rotatedMarker(_latlng, {angle: _angle});
+  			marker
+  				.setIcon(L.icon({
+					iconUrl: _iconUrl,
+					iconSize: _iconSize // [x, y]
+				}))
+  				.addTo(map)
+  				.bindPopup(popup);
+
+  			return marker;
+		}
+
 		function changeBusLine(busColor) {
 			$.each(busses, function(k,v) {
 				if(busColor === '-1') {
@@ -290,6 +384,7 @@
 		}
 
 		function findMe() {
+			canLocatePerson = true;
 			map.locate({
 				setView : true,
 				maxZoom : 17
@@ -601,5 +696,7 @@
     <script src="assets/js/store.js"></script>
     <link rel="stylesheet" href="assets/css/leaflet-routing-machine.css" />
 	<script src="assets/js/leaflet-routing-machine.js"></script>
+    <script src="assets/js/jQueryRotateCompressed.js"></script>
+    <script src="assets/js/L.RotatedMarker.js"></script>
 </body>
 </html>
