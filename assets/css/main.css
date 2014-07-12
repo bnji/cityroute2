@@ -1,0 +1,45 @@
+body {
+    padding: 0;
+    margin: 0;
+}
+html, body, #map {
+	height: 100%;
+}
+.hide {
+	display: none;
+}
+#menu {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 1;
+	background-color: #fff;
+	padding: 5px;
+	min-width: 180px;
+	max-width: 300px;
+	-webkit-border-radius: 5px;
+	-moz-border-radius: 5px;
+	border-radius: 5px;
+	-webkit-box-shadow: -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
+	-moz-box-shadow:    -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
+	box-shadow:         -2px 2px 3px 0px rgba(50, 50, 50, 0.5);
+}
+.center-block {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (max-width: 600px) {
+	.background-image {
+		background-image: url('../img/background-mobile.png');
+		background-size: cover;
+    	background-repeat: no-repeat;
+	}
+}
+@media (min-width: 600px) {
+	.background-image {
+		background-image: url('../img/background-desktop.png');
+		background-size: cover;
+    	background-repeat: no-repeat;
+	}
+}

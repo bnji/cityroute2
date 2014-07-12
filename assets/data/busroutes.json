@@ -1,0 +1,26 @@
+[
+    {
+        "key": "-1",
+        "val": "Show all"
+    },
+    {
+        "key": "Red",
+        "val": "Bussleið 1"
+    },
+    {
+        "key": "Green",
+        "val": "Bussleið 2"
+    },
+    {
+        "key": "Blue",
+        "val": "Bussleið 3"
+    },
+    {
+        "key": "Orange",
+        "val": "Bussleið 4"
+    },
+    {
+        "key": "Violet",
+        "val": "Bussleið 5"
+    }
+]
