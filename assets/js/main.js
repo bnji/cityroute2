@@ -1,6 +1,38 @@
-var center = new L.LatLng(62.01412, -6.77753); //Tórshavn city center
+/**
+ * Global JavaScript variables
+ */
 
-var map = L.map('map', {
+var routeFromStartToBusStopInfo = {
+	destLatLng: [0,0],
+	totalDistance: Number.MAX_VALUE,
+	distanceLeft: 0
+}
+var routeFromEndToBusStopInfo = {
+	destLatLng: [0,0],
+	totalDistance: Number.MAX_VALUE,
+	distanceLeft: 0
+}
+var busses = MVC.List();
+var busStops = MVC.List();
+var foundAddresses = MVC.List();
+var currentLocationMarker;
+var homeAddressMarker;
+var destAddressMarker;
+var canLocatePerson = true;
+var router;
+var line1;
+var line2;
+var center;
+var map;
+
+/**
+ * Initialize Leaflet Map
+ */
+
+//Tórshavn city center
+center = new L.LatLng(62.01412, -6.77753);
+
+map = L.map('map', {
 	minZoom: 13,
 	maxZoom: 19/*,
 	maxBounds: [
@@ -11,7 +43,71 @@ var map = L.map('map', {
     ]*/
 }).setView(center, 15);
 
+L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
+	maxZoom: 19,
+	attribution: '<a href="http://bnji.github.com">Benjamin Hammer</a> | <a href="http://citypulse.torshavn.fo">Citypulse</a>',
+	/*attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
+		'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+		'Imagery © <a href="http://mapbox.com">Mapbox</a>',*/
+	id: 'examples.map-i86knfo3'
+}).addTo(map);
+
+/**
+ * Leaflet Map Events
+ */
+
+map.on('locationfound', function(data) {
+	var lat = data['latitude'];
+	var lng = data['longitude'];
+	console.log("Lat: " + lat + ", Lng: " + lng);
+	locatePerson(lat, lng);
+
+	if(currentLocationMarker !== undefined) {
+		currentLocationMarker.setLatLng(getLatLng(lat, lng));
+		currentLocationMarker.setPopupContent(getLocatePersonPopupContent());
+	}
+	setTimeout(function() {
+		map.locate({
+			setView : false,
+			maxZoom : 17
+		});
+	}, 1000);
+});
+
+/*map.on('popupopen', function(e) {
+  var marker = e;
+  console.log(marker);
+});*/
+
 //map.on('click', onMapClick);
+
+/*map.on('click', function(e) {
+    waypoints.push({latLng: e.latlng});
+    if (waypoints.length >= 2) {
+        router.route(waypoints, function(err, routes) {
+            if (line) {
+                map.removeLayer(line);
+            }
+
+            if (err) {
+                alert(err);
+            } else {
+                line = L.Routing.line(routes[0]).addTo(map);
+            }
+        });
+    }
+});*/
+
+/*L.Routing.osrm({
+    waypoints: [
+        L.latLng(62.01574938688206, -6.787834167480469),
+        L.latLng(62.013030754675505, -6.78455114364624)
+    ]
+}).addTo(map);*/
+
+/**
+ * Device specific events
+ */
 
 if (window.DeviceOrientationEvent) {
 	// Listen for the event and handle DeviceOrientationEvent object
@@ -43,67 +139,9 @@ if (window.DeviceOrientationEvent) {
 	  }, false);
 }
 
-var routeFromStartToBusStopInfo = {
-	destLatLng: [0,0],
-	totalDistance: Number.MAX_VALUE,
-	distanceLeft: 0
-}
-
-var routeFromEndToBusStopInfo = {
-	destLatLng: [0,0],
-	totalDistance: Number.MAX_VALUE,
-	distanceLeft: 0
-}
-
-var busses = MVC.List();
-var busStops = MVC.List();
-var foundAddresses = MVC.List();
-var currentLocationMarker;
-var homeAddressMarker;
-var destAddressMarker;
-var canLocatePerson = true;
-var router,
-    //waypoints = [],
-    line1, line2;
-
-map.on('locationfound', function(data) {
-	var lat = data['latitude'];
-	var lng = data['longitude'];
-	console.log("Lat: " + lat + ", Lng: " + lng);
-	locatePerson(lat, lng);
-
-	if(currentLocationMarker !== undefined) {
-		currentLocationMarker.setLatLng(getLatLng(lat, lng));
-		currentLocationMarker.setPopupContent(getLocatePersonPopupContent());
-	}
-	setTimeout(function() {
-		map.locate({
-			setView : false,
-			maxZoom : 17
-		});
-	}, 1000);
-});
-
-L.tileLayer('https://{s}.tiles.mapbox.com/v3/{id}/{z}/{x}/{y}.png', {
-	maxZoom: 19,
-	attribution: '<a href="http://bnji.github.com">Benjamin Hammer</a> | <a href="http://citypulse.torshavn.fo">Citypulse</a>',
-	/*attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, ' +
-		'<a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
-		'Imagery © <a href="http://mapbox.com">Mapbox</a>',*/
-	id: 'examples.map-i86knfo3'
-}).addTo(map);
-
-function onMapClick(e) {
-	console.log(e.latlng);
-}
-
-/*map.on('popupopen', function(e) {
-  var marker = e;
-  console.log(marker);
-});*/
-
-//var bus1 = L.marker(center).addTo(map);//.bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
-
+/**
+ * jQuery code to execute when DOM is ready
+ */
 $(function() {
 	$('#map').hide();
 
@@ -144,6 +182,10 @@ $(function() {
 			//$('#map').show();
 		}
 	});
+
+	/**
+	 * jQuery Events
+	 */
 
 	$('#selectBusLine').change(function() {
 		console.log("#selectBusLine changed");
@@ -195,31 +237,15 @@ $(function() {
 			e.preventDefault();
 		}
 	});
+}); // End of jQuery 'onDocumentReady' function
 
-    /*map.on('click', function(e) {
-	    waypoints.push({latLng: e.latlng});
-	    if (waypoints.length >= 2) {
-	        router.route(waypoints, function(err, routes) {
-	            if (line) {
-	                map.removeLayer(line);
-	            }
+/**
+ * JavaScript functions
+ */
 
-	            if (err) {
-	                alert(err);
-	            } else {
-	                line = L.Routing.line(routes[0]).addTo(map);
-	            }
-	        });
-	    }
-	});*/
-
-	/*L.Routing.osrm({
-	    waypoints: [
-	        L.latLng(62.01574938688206, -6.787834167480469),
-	        L.latLng(62.013030754675505, -6.78455114364624)
-	    ]
-	}).addTo(map);*/
-});
+function onMapClick(e) {
+	console.log(e.latlng);
+}
 
 function locateDestination(selectedId) {
 	var jsonData = foundAddresses.Get(parseInt(selectedId));
@@ -307,8 +333,8 @@ function locatePerson(lat, lng) {
 	}
 }
 
+//http://wiki.openstreetmap.org/wiki/Nominatim#Reverse%5FGeocoding%5F.2F%5FAddress%5Flookup
 function reverseGeoLookup(lat, lng, callbackSuccess) {
-	//http://wiki.openstreetmap.org/wiki/Nominatim#Reverse%5FGeocoding%5F.2F%5FAddress%5Flookup
 	getWSData('http://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json', '', 'json', function(json) {
 		callbackSuccess(json);
 	});
@@ -345,13 +371,11 @@ function removeRoute(line) {
 function createRoute(list) {
 	var line;
 	var waypoints = [];
-
 	$.each(list, function(k,v) {
 		waypoints.push({
 	    	latLng: v
 	    });
 	});
-
     router.route(waypoints, function(err, routes) {
     	removeRoute(line);
         /*if (line) {
@@ -373,24 +397,21 @@ function removeMarker(marker) {
 }
 
 function addMarker(_latlng, _angle, _popupContent, _iconUrl, _iconSize) {
-
 	var popup = L.popup({
 		autoPan: false,
 		keepInView: false,
 		closeOnClick: true
 	});
 	popup.setContent(_popupContent);
-
 	var marker = L.rotatedMarker(_latlng, {angle: _angle});
-		marker
-			.setIcon(L.icon({
-			iconUrl: _iconUrl,
-			iconSize: _iconSize // [x, y]
-		}))
-			.addTo(map)
-			.bindPopup(popup);
-
-		return marker;
+	marker
+		.setIcon(L.icon({
+		iconUrl: _iconUrl,
+		iconSize: _iconSize // [x, y]
+	}))
+	.addTo(map)
+	.bindPopup(popup);
+	return marker;
 }
 
 function changeBusLine(busColor) {
@@ -423,7 +444,6 @@ function toggleBusStops(isChecked, selectedColor) {
 			v['marker'].setOpacity(0);
 		}
 	});
-
 	Store.save("showBusStops", isChecked);
 }
 
@@ -590,24 +610,21 @@ function BusStop(_busStop, _station, _busNoAndColor) {
 function createBusStopMarker(_busStop, station, busStopIconColor) {
 	var busStopIconRelativePath = 'assets/icons/busStop/';
 	var busStopIconNo = '/8.png';
-
 	var popup = L.popup({
 					autoPan: false,
 					keepInView: false,
 					closeOnClick: true
 				});
 	//console.log(station);
-		popup.setContent("<b>" + station['name'] + "</b><br /> Time left: " + _busStop['timeLeft']);
-
-		var marker = L.marker(getLatLng(station['lat'], station['lng']));
-			marker
-				.setIcon(L.icon({
-				iconUrl: busStopIconRelativePath + busStopIconColor + busStopIconNo,
-				iconSize: [32, 37]
-			}))
-				.addTo(map)
-				.bindPopup(popup);
-
+	popup.setContent("<b>" + station['name'] + "</b><br /> Time left: " + _busStop['timeLeft']);
+	var marker = L.marker(getLatLng(station['lat'], station['lng']));
+	marker
+		.setIcon(L.icon({
+		iconUrl: busStopIconRelativePath + busStopIconColor + busStopIconNo,
+		iconSize: [32, 37]
+	}))
+	.addTo(map)
+	.bindPopup(popup);
   	return marker;
 }
 
@@ -679,7 +696,6 @@ function getBusDataAsJson(callback) {
 }
 
 function getStationDataAsJson(callback) {
-	//getWSData('http://localhost/dev/cityroute2/proxy.php', 'stations', function(xml) {
 	//getWSData('http://kt-husid-webapp.cloudapp.net/cityroute2/proxy.php', 'stations', function(xml) {
 	getWSData('assets/data/stations.xml', 'stations', 'xml', function(xml) {
 		// Parse XML to JSON
