@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>City Route 2</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.css" />
+	<link rel="stylesheet" href="assets/css/main.css">
+	<script src="assets/js/jquery-1.11.0.min.js"></script>
+	<script src="assets/js/jquery-migrate-1.2.1.min.js"></script>
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+	<!--<script type='text/javascript' src='http://localhost/dev/simplemvc/simple.mvc.js'></script>-->
+	<script type='text/javascript' src='http://rawgit.com/bnji/simplemvc/master/simple.mvc.js'></script>
+	<script type='text/javascript' src='http://rawgit.com/bnji/simplemvc/master/simple.mvc.json.js'></script>
+	<script src="http://rawgit.com/bnji/simplemvc/master/examples/debug.js"></script>
+	<script src="assets/js/json2.js"></script>
+	<script type="text/javascript"> if (!window['console']) console = {log: function() {}}; </script>
+    <script>
+    //$ = {}
+    </script>
+    <!--//end IE fixes -->
+
+</head>
+<body class="background-image">
+	<!--[if lt IE 10]>
+	    <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+	<![endif]-->
+
+	<div class="container" id="nodata" style="display:none;">
+		<div class="center-block">
+			<h1>Ongir bussar koyra í løtuni</h1>
+		</div>
+    </div><!-- /.container -->
+
+    <div id="menu" style="display:none;">
+    	<form class="form-inline" role="form">
+			<select id="selectBusLine" class="form-control input-sm"></select>
+			<button id="findMe" type="button" class="btn btn-primary btn-sm">Find me</button>
+    	</form>
+    	<form class="form-horizontal" role="form">
+			<input id="destinationAddress" type="text" class="form-control input-sm" placeholder="destination address" />
+			<select id="destinationOptions" class="form-control input-sm" style="display:none;"></select>
+    		<label>
+		    	<input id="showBusStops" type="checkbox" checked="checked"> Show bus stops?
+		    </label>
+    	</form>
+    </div>
+
+    <div id="map"</div>
+
+	<script src="assets/js/bootstrap-3.2.0.min.js"></script>
+	<script src="assets/js/jquery.xml2json.js"></script>
+    <script src="http://rawgit.com/bnji/simplemvc/master/lib/jstorage.min.js"></script>
+    <script src="http://cdn.leafletjs.com/leaflet-0.7.3/leaflet.js"></script>
+	<script src="assets/js/main.js"></script>
+    <script src="assets/js/store.js"></script>
+    <link rel="stylesheet" href="assets/css/leaflet-routing-machine.css" />
+	<script src="assets/js/leaflet-routing-machine.js"></script>
+    <script src="assets/js/jQueryRotateCompressed.js"></script>
+    <script src="assets/js/L.RotatedMarker.js"></script>
+</body>
+</html>
