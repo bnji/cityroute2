@@ -260,17 +260,17 @@ function locateDestination(selectedId) {
 	var closestBusStop;
 	//var shortestDistanceFound = Number.MAX_VALUE;
 	// busStop: [color, data: [id, info:[bus:[]], isStation, lat, lng, name, prevStationId, sms], marker: [..], number]
-	$.each(busStops, function(k,v) {
-		var latLng = getLatLng(v['data']['lat'], v['data']['lng']);
+	$.each(busStops, function(k,busStation) {
+		var latLng = getLatLng(busStation['lat'], busStation['lng']);
 		var distance = latLngFrom.distanceTo(latLng);
 		if(distance < routeFromEndToBusStopInfo['totalDistance']) {
 			routeFromEndToBusStopInfo['totalDistance'] = distance;
-			closestBusStop = v;
+			closestBusStop = busStation;
 			routeFromEndToBusStopInfo['destLatLng'] = latLng;
 		}
 	});
 	console.log(closestBusStop);
-	console.log("Shortest distance: " + routeFromEndToBusStopInfo['totalDistance'] + ", bus stop name: " + closestBusStop['data']['name']);
+	console.log("Shortest distance: " + routeFromEndToBusStopInfo['totalDistance'] + ", bus stop name: " + closestBusStop['name']);
 	//console.log(closestBusStop);
 
 	removeMarker(destAddressMarker);
@@ -301,7 +301,7 @@ function locatePerson(lat, lng) {
 			//var shortestDistanceFound = Number.MAX_VALUE;
 			// busStop: [color, data: [id, info:[bus:[]], isStation, lat, lng, name, prevStationId, sms], marker: [..], number]
 			$.each(busStops, function(k,v) {
-				var latLng = getLatLng(v['data']['lat'], v['data']['lng']);
+				var latLng = getLatLng(v['lat'], v['lng']);
 				var distance = latLngFrom.distanceTo(latLng);
 				if(distance < routeFromStartToBusStopInfo['totalDistance']) {
 					//shortestDistanceFound = distance;
@@ -310,7 +310,7 @@ function locatePerson(lat, lng) {
 					routeFromStartToBusStopInfo['destLatLng'] = latLng;
 				}
 			});
-			console.log("Shortest distance: " + routeFromStartToBusStopInfo['totalDistance'] + ", bus stop name: " + closestBusStop['data']['name']);
+			console.log("Shortest distance: " + routeFromStartToBusStopInfo['totalDistance'] + ", bus stop name: " + closestBusStop['name']);
 			//console.log(closestBusStop);
 
 			removeMarker(homeAddressMarker);
@@ -435,14 +435,17 @@ function findMe() {
 
 function toggleBusStops(isChecked, selectedColor) {
 	var opacity = isChecked === true ? 1 : 0;
-	$.each(busStops, function(k,v) {
-		var busColor = v['color'];
-		if(selectedColor === busColor || selectedColor === '-1') {
-			v['marker'].setOpacity(opacity);
-		}
-		else {
-			v['marker'].setOpacity(0);
-		}
+	$.each(busStops, function(k,station) {
+		$.each(station['busStationLines'], function(k,busStationLine) {
+			if(busStationLine !== undefined && busStationLine['marker'] !== undefined) {
+				if(selectedColor === station['color'] || selectedColor === '-1') {
+					busStationLine['marker'].setOpacity(opacity);
+				}
+				else {
+					busStationLine['marker'].setOpacity(0);
+				}
+			}
+		});
 	});
 	Store.save("showBusStops", isChecked);
 }
@@ -450,22 +453,125 @@ function toggleBusStops(isChecked, selectedColor) {
 function loadBusStops(callbackSuccess) {
 	getStationDataAsArray(function(data) {
 		$.each(data, function(k,station) {
-
-			$.each(station['info'], function(k,v) {
-				$.each(v, function(k,busStop) {
-					var busStopLineId = busStop['lineId'];
-					if(busStopLineId !== undefined) {
-						//console.log(busStopLineId);
-						var busNoAndColor = lineIdToBusNoAndColor(busStopLineId);
+			var busStation = new BusStation(station);
+			//console.log(station);
+			//console.log(busStation);
+			// Problem: Each bus station has mixed buslines
+			// Solution: Split each bus station into 1 busstation with its own buslines
+			// Loop through each stationInfo at this station
+			$.each(station['info'], function(k,stationInfo) {
+				// stationInfo: array of mixed buslines for the bus station
+				//console.log(stationInfo);
+				var busStopIconRelativePath = 'assets/icons/busStop/';
+				var busStopIconNo = '/8.png';
+				var popup = L.popup({
+								autoPan: false,
+								keepInView: false,
+								closeOnClick: true
+							});
+				// Loop through each bus stop at this station
+				// Group each lineId into an array and create a bus stop for this lineId
+				$.each(stationInfo, function(k,busStop) {
+					var busLineId = parseInt(busStop['lineId']);
+					var busLine = new BusLine(busStop);
+					var busStationLine = busStation.getBusStationLine(busLineId);
+					if(busStationLine !== undefined) {
+						//console.log(busStop);
+						busStationLine['busLines'].Add(busLine);
+						busStationLine['popupContent'] += busLine['timeLeft'] + ", ";
+					}
+					if(busLineId !== undefined) {
+						var busNoAndColor = lineIdToBusNoAndColor(busLineId);
 						if(busNoAndColor !== null) {
-							busStops.Add(new BusStop(busStop, station, busNoAndColor));
+							busStationLine['color'] = busNoAndColor['color'];
+							if(stationInfo.length > 1)
+							{
+								busStation['lat'] = parseFloat(busStation['lat']) + Math.random() / 100000;
+								busStation['lng'] = parseFloat(busStation['lng']) + Math.random() / 100000;
+							}
+							var popupContent = "<b>" + busLine['lineName'] + "</b><br />" + busStation['name'] + "<br />" + busStationLine['popupContent'];
+							popupContent = popupContent.substr(0, popupContent.length - 2);
+							popup.setContent(popupContent);
+							var marker = L.marker(getLatLng(busStation['lat'], busStation['lng']));
+							marker
+								.setIcon(L.icon({
+								iconUrl: busStopIconRelativePath + busStationLine['color'] + busStopIconNo,
+								iconSize: [32, 37]
+							}))
+								.addTo(map)
+								.bindPopup(popup)
+								.setOpacity(0);
+							busStationLine['marker'] = marker;
 						}
 					}
 				});
+
 			});
+			busStops.Add(busStation);
 		});
+		/*console.log(busStops[0].getBusStationLine(241));
+		console.log(busStops[0].getBusStationLine(242));
+		console.log(busStops[0].getBusStationLine(243));
+		console.log(busStops[0].getBusStationLine(261));
+		console.log(busStops[0].getBusStationLine(301));
+		$.each(busStops, function(k,busStation) {
+			if(busStation.name.contains('Steinatún')) {
+				console.log(busStation);
+			}
+		});*/
 	});
 	callbackSuccess();
+}
+
+function BusStationLine(busLineId) {
+	this.busLineId = busLineId;
+	this.color = undefined;
+	this.marker = undefined;
+	this.busLines = MVC.List(); // List of BusLine() objects
+	this.popupContent = '';
+}
+
+function BusStation(json) {
+	this.id = json['id'];
+	//this.info = MVC.List(json['info']['bus']); // busNo, estimatedTime, id, isActive, lineId, lineName, timeLeft
+	this.busStationLines = [];// MVC.List();
+	this.busStationLines[0] = new BusStationLine(241);// .Add(new BusStationLine(241)); // Red
+	this.busStationLines[1] = new BusStationLine(242);// .Add(new BusStationLine(242)); // Green
+	this.busStationLines[2] = new BusStationLine(243);//.Add(new BusStationLine(243)); // Blue
+	this.busStationLines[3] = new BusStationLine(261);//.Add(new BusStationLine(261)); // Orange
+	this.busStationLines[4] = new BusStationLine(301);//.Add(new BusStationLine(301)); // Violet
+	this.getBusStationLine = function(busLineId) {
+		var busStationLine;
+		$.each(this.busStationLines, function(k,v) {
+			if(v['busLineId'] === busLineId) {
+				busStationLine = v;
+				return false;
+			}
+		});
+		return busStationLine;
+	};
+	// busLines = [Leið 1, Leið 2, Leið 5]
+	this.isStation = json['isStation'];
+	this.lat = parseFloat(json['lat']);
+	this.lng = parseFloat(json['lng']);
+	this.name = json['name'];
+	this.prevStationId = json['prevStationId'];
+	this.sms = json['sms'];
+	/*this.number = _busNoAndColor['no'];
+	this.color = _busNoAndColor['color'];
+	this.data = _station;
+	this.marker = createBusStopMarker(_busStop, _station, _busNoAndColor['color']);
+	this.marker.setOpacity(0);*/
+}
+
+function BusLine(json) {
+	this.busNo = json['busNo'];
+	this.estimatedTime = json['estimatedTime'];
+	this.id = json['id'];
+	this.isActive = json['isActive'];
+	this.lineId = json['lineId'];
+	this.lineName = json['lineName'];
+	this.timeLeft = json['timeLeft'];
 }
 
 function lineIdToBusNoAndColor(_lineId) {
@@ -599,14 +705,6 @@ function Bus(v, _marker, _canDrawUI) {
 	this.canDrawUI = _canDrawUI;
 }
 
-function BusStop(_busStop, _station, _busNoAndColor) {
-	this.number = _busNoAndColor['no'];
-	this.color = _busNoAndColor['color'];
-	this.data = _station;
-	this.marker = createBusStopMarker(_busStop, _station, _busNoAndColor['color']);
-	this.marker.setOpacity(0);
-}
-
 function createBusStopMarker(_busStop, station, busStopIconColor) {
 	var busStopIconRelativePath = 'assets/icons/busStop/';
 	var busStopIconNo = '/8.png';
@@ -689,7 +787,7 @@ function getStationDataAsArray(callback) {
 }
 
 function getBusDataAsJson(callback) {
-	getWSData('http://168.63.68.113/cityroute2/proxy.php', 'buses', 'xml', function(xml) {
+	getWSData('http://kt-husid-webapp.cloudapp.net/cityroute2/proxy.php', 'buses', 'xml', function(xml) {
 		// Parse XML to JSON
 	    callback($.xml2json(xml));
 	});
@@ -729,3 +827,7 @@ function getWSData(url, query, _dataType, callback) {
     }
   });
 }
+
+String.prototype.contains = function(test) {
+    return this.indexOf(test) == -1 ? false : true;
+};
