@@ -25,6 +25,8 @@ var line2;
 var center;
 var map;
 
+var findMeButtonValues = ['Find me', 'Find route'];
+
 /**
  * Initialize Leaflet Map
  */
@@ -205,36 +207,69 @@ $(function() {
 	});
 
 	$('#destinationOptions').change(function() {
-		locateDestination($(this).val());
+		var selectedAddress = $(this).val();
+		locateDestination(selectedAddress);
 		$(this).hide();
 	});
 
 	$('#destinationAddress').keydown(function(e) {
-		var keyCode = e.keyCode;
-		//console.log(e);
-		if(e.keyCode === 13) {
-			console.log(foundAddresses.Clear());
+		var key = e.keyCode;
+		var value = $(this).val();
+		//console.log(key);
+		// escape
+		if(key === 27) {
+			$(this).val('');
+			$('#destinationOptions')
+				.empty()
+				.hide();
+			$('#findMe').text(findMeButtonValues[0]);
+			e.preventDefault();
+		} // enter
+		else if(key === 13) {
+			foundAddresses.Clear();
 			var address = $(this).val();
 			//console.log(address);
+			// Find information about the address
 			geoLookup(address, function(json) {
-				console.log("Length: " + json.length);
+				// If only 1 address found
 				if(json.length === 1) {
+					// hide the drop down field
 					$('#destinationOptions').hide();
-					//console.log(json[0]);
+					// Add to the list and locate this address
 					foundAddresses.Add(json[0]);
 					locateDestination(0);
 				}
 				else {
-					$('#destinationOptions').empty().show();
-					$('#destinationOptions').append($('<option />').val('-1').text('Choose an address...'));
+					$('#destinationOptions')
+						.empty()
+						.show();
+					$('#destinationOptions')
+						.append($('<option />')
+							.val('-1')
+							.text('Choose an address...')
+							);
 					$.each(json, function(k,v) {
 						foundAddresses.Add(v);
-						$('#destinationOptions').append($('<option />').val(k).text(v['display_name']));
-						//console.log(json);
+						$('#destinationOptions')
+							.append($('<option />')
+								.val(k)
+								.text(v['display_name'])
+							);
 					});
 				}
 			});
 			e.preventDefault();
+		}
+		else {
+			if(homeAddressMarker !== undefined && $('#findMe').text() === findMeButtonValues[0]) {
+				$('#findMe')
+					.removeClass('btn-primary')
+					.addClass('btn-success')
+					.text(findMeButtonValues[1]);
+			}
+			if(value.trim().length === 0) {
+				$('#findMe').text(findMeButtonValues[0]);
+			}
 		}
 	});
 }); // End of jQuery 'onDocumentReady' function
@@ -242,6 +277,12 @@ $(function() {
 /**
  * JavaScript functions
  */
+
+function setFindMeButtonState(state) {
+	if(state === 0) {
+
+	}
+}
 
 function onMapClick(e) {
 	console.log(e.latlng);
@@ -454,6 +495,9 @@ function loadBusStops(callbackSuccess) {
 	getStationDataAsArray(function(data) {
 		$.each(data, function(k,station) {
 			var busStation = new BusStation(station);
+			/*if(!busStation['isStation']) {
+				console.log(busStation);
+			}*/
 			//console.log(station);
 			//console.log(busStation);
 			// Problem: Each bus station has mixed buslines
@@ -462,42 +506,45 @@ function loadBusStops(callbackSuccess) {
 			$.each(station['info'], function(k,stationInfo) {
 				// stationInfo: array of mixed buslines for the bus station
 				//console.log(stationInfo);
-				var busStopIconRelativePath = 'assets/icons/busStop/';
-				var busStopIconNo = '/8.png';
-				var popup = L.popup({
-								autoPan: false,
-								keepInView: false,
-								closeOnClick: true
-							});
 				// Loop through each bus stop at this station
 				// Group each lineId into an array and create a bus stop for this lineId
 				$.each(stationInfo, function(k,busStop) {
-					var busLineId = parseInt(busStop['lineId']);
 					var busLine = new BusLine(busStop);
+					var busLineId = busLine['lineId'];
 					var busStationLine = busStation.getBusStationLine(busLineId);
 					if(busStationLine !== undefined) {
+						busStation.addBusLine(busLine);
 						//console.log(busStop);
-						busStationLine['busLines'].Add(busLine);
 						busStationLine['popupContent'] += busLine['timeLeft'] + ", ";
 					}
 					if(busLineId !== undefined) {
 						var busNoAndColor = lineIdToBusNoAndColor(busLineId);
 						if(busNoAndColor !== null) {
+							var busStopIconRelativePath = 'assets/icons/busStop/';
+							var busStopIconNo = '/8.png';
+							var marker, popupContent;
+							var popup = L.popup({
+								autoPan: false,
+								keepInView: false,
+								closeOnClick: true
+							});
 							busStationLine['color'] = busNoAndColor['color'];
+							// Make sure the bus stops don't overlap.
+							// Future solution: Ensure better data (no overlaps and correction lat,lng pos.)
 							if(stationInfo.length > 1)
 							{
-								busStation['lat'] = parseFloat(busStation['lat']) + Math.random() / 100000;
-								busStation['lng'] = parseFloat(busStation['lng']) + Math.random() / 100000;
+								busStation['lat'] = parseFloat(busStation['lat']) + Math.sin( Math.random() / 70000 ) / 10000;
+								busStation['lng'] = parseFloat(busStation['lng']) + Math.cos( Math.random() / 50000 ) / 10000;
 							}
-							var popupContent = "<b>" + busLine['lineName'] + "</b><br />" + busStation['name'] + "<br />" + busStationLine['popupContent'];
+							popupContent = "<b>" + busLine['lineName'] + "</b><br />" + busStation['name'] + "<br />" + busStationLine['popupContent'];
 							popupContent = popupContent.substr(0, popupContent.length - 2);
 							popup.setContent(popupContent);
-							var marker = L.marker(getLatLng(busStation['lat'], busStation['lng']));
+							marker = L.marker([busStation['lat'], busStation['lng']]);
 							marker
 								.setIcon(L.icon({
-								iconUrl: busStopIconRelativePath + busStationLine['color'] + busStopIconNo,
-								iconSize: [32, 37]
-							}))
+									iconUrl: busStopIconRelativePath + busStationLine['color'] + busStopIconNo,
+									iconSize: [32, 37]
+								}))
 								.addTo(map)
 								.bindPopup(popup)
 								.setOpacity(0);
@@ -508,17 +555,12 @@ function loadBusStops(callbackSuccess) {
 
 			});
 			busStops.Add(busStation);
-		});
-		/*console.log(busStops[0].getBusStationLine(241));
-		console.log(busStops[0].getBusStationLine(242));
-		console.log(busStops[0].getBusStationLine(243));
-		console.log(busStops[0].getBusStationLine(261));
-		console.log(busStops[0].getBusStationLine(301));
-		$.each(busStops, function(k,busStation) {
-			if(busStation.name.contains('Steinatún')) {
-				console.log(busStation);
+			if(busStation['connectingLines'].Size() > 1) {
+				if(busStation['name'].contains('Steinatún')) {
+					console.log(busStation);
+				}
 			}
-		});*/
+		});
 	});
 	callbackSuccess();
 }
@@ -534,12 +576,13 @@ function BusStationLine(busLineId) {
 function BusStation(json) {
 	this.id = json['id'];
 	//this.info = MVC.List(json['info']['bus']); // busNo, estimatedTime, id, isActive, lineId, lineName, timeLeft
-	this.busStationLines = [];// MVC.List();
-	this.busStationLines[0] = new BusStationLine(241);// .Add(new BusStationLine(241)); // Red
-	this.busStationLines[1] = new BusStationLine(242);// .Add(new BusStationLine(242)); // Green
-	this.busStationLines[2] = new BusStationLine(243);//.Add(new BusStationLine(243)); // Blue
-	this.busStationLines[3] = new BusStationLine(261);//.Add(new BusStationLine(261)); // Orange
-	this.busStationLines[4] = new BusStationLine(301);//.Add(new BusStationLine(301)); // Violet
+	this.connectingLines = MVC.List();
+	this.busStationLines = [];
+	this.busStationLines[0] = new BusStationLine(241); // Red
+	this.busStationLines[1] = new BusStationLine(242); // Green
+	this.busStationLines[2] = new BusStationLine(243); // Blue
+	this.busStationLines[3] = new BusStationLine(261); // Orange
+	this.busStationLines[4] = new BusStationLine(301); // Violet
 	this.getBusStationLine = function(busLineId) {
 		var busStationLine;
 		$.each(this.busStationLines, function(k,v) {
@@ -550,18 +593,20 @@ function BusStation(json) {
 		});
 		return busStationLine;
 	};
-	// busLines = [Leið 1, Leið 2, Leið 5]
-	this.isStation = json['isStation'];
+	this.addBusLine = function(busLine) {
+		var busLineId = busLine['lineId'];
+		if(!this.connectingLines.Contains(busLineId)) {
+			this.connectingLines.Add(busLineId);
+		}
+		var busStationLine = this.getBusStationLine(busLineId);
+		busStationLine['busLines'].Add(busLine);
+	};
+	this.isStation = parseInt(json['isStation']) === 1;
 	this.lat = parseFloat(json['lat']);
 	this.lng = parseFloat(json['lng']);
 	this.name = json['name'];
 	this.prevStationId = json['prevStationId'];
 	this.sms = json['sms'];
-	/*this.number = _busNoAndColor['no'];
-	this.color = _busNoAndColor['color'];
-	this.data = _station;
-	this.marker = createBusStopMarker(_busStop, _station, _busNoAndColor['color']);
-	this.marker.setOpacity(0);*/
 }
 
 function BusLine(json) {
@@ -569,7 +614,7 @@ function BusLine(json) {
 	this.estimatedTime = json['estimatedTime'];
 	this.id = json['id'];
 	this.isActive = json['isActive'];
-	this.lineId = json['lineId'];
+	this.lineId = parseInt(json['lineId']);
 	this.lineName = json['lineName'];
 	this.timeLeft = json['timeLeft'];
 }

@@ -35,13 +35,16 @@
 
     <div id="menu" style="display:none;">
     	<form class="form-inline" role="form">
-			<select id="selectBusLine" class="form-control input-sm"></select>
+    		<input id="destinationAddress" type="text" class="form-control input-sm" placeholder="destination address" />
+			<select id="destinationOptions" class="form-control input-sm" style="display:none;"></select>
 			<button id="findMe" type="button" class="btn btn-primary btn-sm">Find me</button>
     	</form>
+    	<h4>Settings</h4>
+		<form class="form-inline" role="form">
+			Buslines: <select id="selectBusLine" class="form-control input-sm"></select>
+    	</form>
     	<form class="form-horizontal" role="form">
-			<input id="destinationAddress" type="text" class="form-control input-sm" placeholder="destination address" />
-			<select id="destinationOptions" class="form-control input-sm" style="display:none;"></select>
-    		<label>
+			<label>
 		    	<input id="showBusStops" type="checkbox" checked="checked"> Show bus stops?
 		    </label>
     	</form>
