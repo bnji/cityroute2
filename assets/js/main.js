@@ -2,16 +2,8 @@
  * Global JavaScript variables
  */
 
-var routeFromStartToBusStopInfo = {
-	destLatLng: [0,0],
-	totalDistance: Number.MAX_VALUE,
-	distanceLeft: 0
-}
-var routeFromEndToBusStopInfo = {
-	destLatLng: [0,0],
-	totalDistance: Number.MAX_VALUE,
-	distanceLeft: 0
-}
+var routeFromStartToBusStopInfo;
+var routeFromEndToBusStopInfo;
 var busses = MVC.List();
 var busStops = MVC.List();
 var foundAddresses = MVC.List();
@@ -68,12 +60,12 @@ map.on('locationfound', function(data) {
 		currentLocationMarker.setLatLng(getLatLng(lat, lng));
 		currentLocationMarker.setPopupContent(getLocatePersonPopupContent());
 	}
-	setTimeout(function() {
+	/*setTimeout(function() {
 		map.locate({
 			setView : false,
 			maxZoom : 17
 		});
-	}, 1000);
+	}, 1000);*/
 });
 
 /*map.on('popupopen', function(e) {
@@ -116,22 +108,19 @@ if (window.DeviceOrientationEvent) {
 		window.addEventListener('deviceorientation', function(eventData) {
 	    // gamma is the left-to-right tilt in degrees, where right is positive
 	    var tiltLR = eventData.gamma;
-
 	    // beta is the front-to-back tilt in degrees, where front is positive
 	    var tiltFB = eventData.beta;
-
 	    // alpha is the compass direction the device is facing in degrees
 	    var dir = eventData.alpha
-
 	    // call our orientation event handler
 	    //deviceOrientationHandler(tiltLR, tiltFB, dir);
-	    console.log(dir);
+	    //console.log(dir);
 	    //console.log(homeAddressMarker);
 			//var img = homeAddressMarker['_icon'];
 			//console.log(img);
 			if(currentLocationMarker !== undefined) {
 				//homeAddressMarker.foobar();
-				console.log(currentLocationMarker);
+				//console.log(currentLocationMarker);
 				currentLocationMarker.rotate(-(dir+180));
 				//console.log(homeAddressMarker['marker']);
 				//$(homeAddressMarker['_icon']).css('-webit-transform','rotate(90deg)')
@@ -209,6 +198,9 @@ $(function() {
 	$('#destinationOptions').change(function() {
 		var selectedAddress = $(this).val();
 		locateDestination(selectedAddress);
+
+
+
 		$(this).hide();
 	});
 
@@ -288,6 +280,19 @@ function onMapClick(e) {
 	console.log(e.latlng);
 }
 
+function BusStationPointInfo(_busStation, _totalDistance) {
+	this.totalDistance = Number.MAX_VALUE;
+	this.distanceLeft = 0;
+	this.busStation = _busStation;
+	this.getLatLng = function() {
+		if(this.busStation !== undefined) {
+			return getLatLng(this.busStation['lat'], this.busStation['lng']);
+		}
+		return null;
+	}
+}
+
+// Step 2
 function locateDestination(selectedId) {
 	var jsonData = foundAddresses.Get(parseInt(selectedId));
 	var lat = parseFloat(jsonData['lat']);
@@ -298,22 +303,19 @@ function locateDestination(selectedId) {
 	var address = jsonData['display_name']; // country, country_code, house_number, postcode, road, state, town
 	console.log(jsonData);
 
-	var closestBusStop;
-	//var shortestDistanceFound = Number.MAX_VALUE;
+	var minDistance = Number.MAX_VALUE;
+	var index = -1;
 	// busStop: [color, data: [id, info:[bus:[]], isStation, lat, lng, name, prevStationId, sms], marker: [..], number]
 	$.each(busStops, function(k,busStation) {
 		var latLng = getLatLng(busStation['lat'], busStation['lng']);
 		var distance = latLngFrom.distanceTo(latLng);
-		if(distance < routeFromEndToBusStopInfo['totalDistance']) {
-			routeFromEndToBusStopInfo['totalDistance'] = distance;
-			closestBusStop = busStation;
-			routeFromEndToBusStopInfo['destLatLng'] = latLng;
+		if(distance < minDistance) {
+			index = k;
+			minDistance = distance;
 		}
 	});
-	console.log(closestBusStop);
-	console.log("Shortest distance: " + routeFromEndToBusStopInfo['totalDistance'] + ", bus stop name: " + closestBusStop['name']);
-	//console.log(closestBusStop);
-
+	routeFromEndToBusStopInfo = new BusStationPointInfo(busStops[index], minDistance);
+	console.log("Shortest distance: " + routeFromEndToBusStopInfo['totalDistance'] + ", bus stop name: " + routeFromStartToBusStopInfo['busStation']['name']);
 	removeMarker(destAddressMarker);
 	destAddressMarker = addMarker(latLngFrom,
 								  0,
@@ -321,15 +323,14 @@ function locateDestination(selectedId) {
 								  //"<b>" + address['road'] + "</b><br />" + address['postcode'] + " " + address['town'],
 								  'assets/icons/house/1.png',
 								  [32, 37]);
-
 	removeRoute(line2);
-	line2 = createRoute([latLngFrom, routeFromEndToBusStopInfo['destLatLng']]);
+	line2 = createRoute([latLngFrom, routeFromEndToBusStopInfo.getLatLng()]);
 }
 
+// Step 1
 function locatePerson(lat, lng) {
 	if(canLocatePerson) {
 		canLocatePerson = false;
-
 		//getWSData('http://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lng+'&format=json', '', 'json', function(json) {
 		reverseGeoLookup(lat, lng, function(json) {
 			//console.log(json);
@@ -337,38 +338,32 @@ function locatePerson(lat, lng) {
 			var lng = parseFloat(json['lon']);
 			var latLngFrom = getLatLng(lat, lng);
 			var address = json['address']; // country, country_code, house_number, postcode, road, state, town
-
-			var closestBusStop;
-			//var shortestDistanceFound = Number.MAX_VALUE;
+			var minDistance = Number.MAX_VALUE;
+			var index = -1;
 			// busStop: [color, data: [id, info:[bus:[]], isStation, lat, lng, name, prevStationId, sms], marker: [..], number]
-			$.each(busStops, function(k,v) {
-				var latLng = getLatLng(v['lat'], v['lng']);
+			$.each(busStops, function(k,busStation) {
+				var latLng = getLatLng(busStation['lat'], busStation['lng']);
 				var distance = latLngFrom.distanceTo(latLng);
-				if(distance < routeFromStartToBusStopInfo['totalDistance']) {
-					//shortestDistanceFound = distance;
-					routeFromStartToBusStopInfo['totalDistance'] = distance;
-					closestBusStop = v;
-					routeFromStartToBusStopInfo['destLatLng'] = latLng;
+				if(distance < minDistance) {
+					index = k;
+					minDistance = distance;
 				}
 			});
-			console.log("Shortest distance: " + routeFromStartToBusStopInfo['totalDistance'] + ", bus stop name: " + closestBusStop['name']);
-			//console.log(closestBusStop);
-
+			routeFromStartToBusStopInfo = new BusStationPointInfo(busStops[index], minDistance);
+			console.log("Shortest distance: " + routeFromStartToBusStopInfo['totalDistance'] + ", bus stop name: " + routeFromStartToBusStopInfo['busStation']['name']);
 			removeMarker(homeAddressMarker);
 			homeAddressMarker = addMarker(latLngFrom,
 										  0,
 										  "<b>" + address['road'] + "</b><br />" + address['postcode'] + " " + address['town'],
 										  'assets/icons/house/1.png',
 										  [32, 37]);
-
 			removeMarker(currentLocationMarker);
 			currentLocationMarker = addMarker(latLngFrom,
 										  0,
 										  getLocatePersonPopupContent(),
 										  'assets/icons/person/1.png',
 										  [32, 37]);
-
-			line1 = createRoute([latLngFrom, routeFromStartToBusStopInfo['destLatLng']]);
+			line1 = createRoute([latLngFrom, routeFromStartToBusStopInfo.getLatLng()]);
 
 		});
 	}
@@ -391,7 +386,7 @@ function getLocatePersonPopupContent() {
 	var result = "<b>You are here</b>";
 	if(currentLocationMarker !== undefined) {
 		var latLngFrom = getLatLng(currentLocationMarker['_latlng']['lat'], currentLocationMarker['_latlng']['lng']);
-		var distanceLeft = round(latLngFrom.distanceTo(routeFromStartToBusStopInfo['destLatLng']), 2);
+		var distanceLeft = round(latLngFrom.distanceTo(routeFromStartToBusStopInfogetLatLng()), 2);
 		var totalDistance = round(routeFromStartToBusStopInfo['totalDistance'], 2);
 		result += "<br />Distance left: " + distanceLeft + " km<br />Total distance: " + totalDistance + " km";
 	}
@@ -495,11 +490,6 @@ function loadBusStops(callbackSuccess) {
 	getStationDataAsArray(function(data) {
 		$.each(data, function(k,station) {
 			var busStation = new BusStation(station);
-			/*if(!busStation['isStation']) {
-				console.log(busStation);
-			}*/
-			//console.log(station);
-			//console.log(busStation);
 			// Problem: Each bus station has mixed buslines
 			// Solution: Split each bus station into 1 busstation with its own buslines
 			// Loop through each stationInfo at this station
@@ -514,20 +504,11 @@ function loadBusStops(callbackSuccess) {
 					var busStationLine = busStation.getBusStationLine(busLineId);
 					if(busStationLine !== undefined) {
 						busStation.addBusLine(busLine);
-						//console.log(busStop);
 						busStationLine['popupContent'] += busLine['timeLeft'] + ", ";
 					}
 					if(busLineId !== undefined) {
 						var busNoAndColor = lineIdToBusNoAndColor(busLineId);
 						if(busNoAndColor !== null) {
-							var busStopIconRelativePath = 'assets/icons/busStop/';
-							var busStopIconNo = '/8.png';
-							var marker, popupContent;
-							var popup = L.popup({
-								autoPan: false,
-								keepInView: false,
-								closeOnClick: true
-							});
 							busStationLine['color'] = busNoAndColor['color'];
 							// Make sure the bus stops don't overlap.
 							// Future solution: Ensure better data (no overlaps and correction lat,lng pos.)
@@ -536,19 +517,14 @@ function loadBusStops(callbackSuccess) {
 								busStation['lat'] = parseFloat(busStation['lat']) + Math.sin( Math.random() / 70000 ) / 10000;
 								busStation['lng'] = parseFloat(busStation['lng']) + Math.cos( Math.random() / 50000 ) / 10000;
 							}
-							popupContent = "<b>" + busLine['lineName'] + "</b><br />" + busStation['name'] + "<br />" + busStationLine['popupContent'];
+							var popupContent = "<b>" + busLine['lineName'] + "</b><br />" + busStation['name'] + "<br />" + busStationLine['popupContent'];
 							popupContent = popupContent.substr(0, popupContent.length - 2);
-							popup.setContent(popupContent);
-							marker = L.marker([busStation['lat'], busStation['lng']]);
-							marker
-								.setIcon(L.icon({
-									iconUrl: busStopIconRelativePath + busStationLine['color'] + busStopIconNo,
-									iconSize: [32, 37]
-								}))
-								.addTo(map)
-								.bindPopup(popup)
-								.setOpacity(0);
-							busStationLine['marker'] = marker;
+							busStationLine['marker'] = addMarker([busStation['lat'], busStation['lng']],
+								  0,
+								  popupContent,
+								  'assets/icons/busStop/' + busStationLine['color'] + '/8.png',
+								  [32, 37]);
+							busStationLine['marker'].setOpacity(0);
 						}
 					}
 				});

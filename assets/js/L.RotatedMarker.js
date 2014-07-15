@@ -6,8 +6,8 @@ L.RotatedMarker = L.Marker.extend({
     },
 
     _setPos: function (pos) {
-        console.log(pos);
-        console.log(this.options.angle)
+        //console.log(pos);
+        //console.log(this.options.angle)
         this.options.position = pos;
         L.Marker.prototype._setPos.call(this, pos);
 
