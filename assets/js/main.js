@@ -179,11 +179,11 @@ $(function() {
 	 */
 
 	$('#selectBusLine').change(function() {
-		console.log("#selectBusLine changed");
+		//console.log("#selectBusLine changed");
 		var busColor = this.value;
 		changeBusLine(busColor);
 		Store.save("busColor", busColor);
-		console.log(Store.get("busColor"));
+		//console.log(Store.get("busColor"));
 		toggleBusStops($('#showBusStops').prop('checked'), $('#selectBusLine option:selected').val());
 	});
 
@@ -199,7 +199,15 @@ $(function() {
 		var selectedAddress = $(this).val();
 		locateDestination(selectedAddress);
 
+		// Is the busline on start and end the same ?
+		$.each(routeFromEndToBusStopInfo['busStation'], function(k,busStationDestination) {
+			console.log(busStationDestination);
+			if(routeFromStartToBusStopInfo['busStation']['busLines'].Contains(busStationDestination)) {
+				console.log("same busLine!");
+			}
+		});
 
+		// If they're not, then find optimal route...
 
 		$(this).hide();
 	});
@@ -253,7 +261,7 @@ $(function() {
 			e.preventDefault();
 		}
 		else {
-			if(homeAddressMarker !== undefined && $('#findMe').text() === findMeButtonValues[0]) {
+			if(routeFromStartToBusStopInfo !== undefined && $('#findMe').text() === findMeButtonValues[0]) {
 				$('#findMe')
 					.removeClass('btn-primary')
 					.addClass('btn-success')
@@ -263,6 +271,27 @@ $(function() {
 				$('#findMe').text(findMeButtonValues[0]);
 			}
 		}
+	});
+
+	$(document).on('submit', '[name=busLineInfo]', function(e) {
+		var target = $(e.target);
+		var stationId = parseInt(target.find('input[name="stationId"]').val());
+		var busLineId = parseInt(target.find('input[name="busLineId"]').val());
+		//console.log("stationId: " + stationId + ", busLineId: " + busLineId);
+		var station = busStops.Find('id', stationId);
+		if(station !== undefined) {
+			//console.log(station);
+			busLine = station.getBusStationLine(busLineId);
+			if(busLine !== undefined) {
+				//console.log(busLine);
+				routeFromStartToBusStopInfo = new BusStationPointInfo(station, busLine, 0);
+				busLine['marker'].closePopup();
+				map.panTo([station['lat'], station['lng']]);
+				map.setZoom(18);
+			}
+		}
+		//console.log(busStops[stationId]);
+		return false;
 	});
 }); // End of jQuery 'onDocumentReady' function
 
@@ -280,10 +309,11 @@ function onMapClick(e) {
 	console.log(e.latlng);
 }
 
-function BusStationPointInfo(_busStation, _totalDistance) {
-	this.totalDistance = Number.MAX_VALUE;
+function BusStationPointInfo(_busStation, _busLine, _totalDistance) {
+	this.totalDistance = _totalDistance;
 	this.distanceLeft = 0;
 	this.busStation = _busStation;
+	this.busLine = _busLine;
 	this.getLatLng = function() {
 		if(this.busStation !== undefined) {
 			return getLatLng(this.busStation['lat'], this.busStation['lng']);
@@ -314,7 +344,7 @@ function locateDestination(selectedId) {
 			minDistance = distance;
 		}
 	});
-	routeFromEndToBusStopInfo = new BusStationPointInfo(busStops[index], minDistance);
+	routeFromEndToBusStopInfo = new BusStationPointInfo(busStops[index], null, minDistance);
 	console.log("Shortest distance: " + routeFromEndToBusStopInfo['totalDistance'] + ", bus stop name: " + routeFromStartToBusStopInfo['busStation']['name']);
 	removeMarker(destAddressMarker);
 	destAddressMarker = addMarker(latLngFrom,
@@ -349,7 +379,7 @@ function locatePerson(lat, lng) {
 					minDistance = distance;
 				}
 			});
-			routeFromStartToBusStopInfo = new BusStationPointInfo(busStops[index], minDistance);
+			routeFromStartToBusStopInfo = new BusStationPointInfo(busStops[index], null, minDistance);
 			console.log("Shortest distance: " + routeFromStartToBusStopInfo['totalDistance'] + ", bus stop name: " + routeFromStartToBusStopInfo['busStation']['name']);
 			removeMarker(homeAddressMarker);
 			homeAddressMarker = addMarker(latLngFrom,
@@ -386,7 +416,7 @@ function getLocatePersonPopupContent() {
 	var result = "<b>You are here</b>";
 	if(currentLocationMarker !== undefined) {
 		var latLngFrom = getLatLng(currentLocationMarker['_latlng']['lat'], currentLocationMarker['_latlng']['lng']);
-		var distanceLeft = round(latLngFrom.distanceTo(routeFromStartToBusStopInfogetLatLng()), 2);
+		var distanceLeft = round(latLngFrom.distanceTo(routeFromStartToBusStopInfo.getLatLng()), 2);
 		var totalDistance = round(routeFromStartToBusStopInfo['totalDistance'], 2);
 		result += "<br />Distance left: " + distanceLeft + " km<br />Total distance: " + totalDistance + " km";
 	}
@@ -474,7 +504,7 @@ function toggleBusStops(isChecked, selectedColor) {
 	$.each(busStops, function(k,station) {
 		$.each(station['busStationLines'], function(k,busStationLine) {
 			if(busStationLine !== undefined && busStationLine['marker'] !== undefined) {
-				if(selectedColor === station['color'] || selectedColor === '-1') {
+				if(selectedColor === busStationLine['color'] || selectedColor === '-1') {
 					busStationLine['marker'].setOpacity(opacity);
 				}
 				else {
@@ -519,6 +549,11 @@ function loadBusStops(callbackSuccess) {
 							}
 							var popupContent = "<b>" + busLine['lineName'] + "</b><br />" + busStation['name'] + "<br />" + busStationLine['popupContent'];
 							popupContent = popupContent.substr(0, popupContent.length - 2);
+							popupContent += '<form name="busLineInfo" role="form">';
+							popupContent += '<input name="stationId" type="hidden" value="'+busStation['id']+'" />';
+							popupContent += '<input name="busLineId" type="hidden" value="'+busLineId+'" />';
+							popupContent += '<button type="submit" class="btn btn-primary btn-sm">Depart from here</button>';
+							popupContent += '</form>';
 							busStationLine['marker'] = addMarker([busStation['lat'], busStation['lng']],
 								  0,
 								  popupContent,
@@ -550,7 +585,7 @@ function BusStationLine(busLineId) {
 }
 
 function BusStation(json) {
-	this.id = json['id'];
+	this.id = parseInt(json['id']);
 	//this.info = MVC.List(json['info']['bus']); // busNo, estimatedTime, id, isActive, lineId, lineName, timeLeft
 	this.connectingLines = MVC.List();
 	this.busStationLines = [];
