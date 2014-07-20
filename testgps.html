@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>City Route 2</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+	<script src="assets/js/jquery-1.11.0.min.js"></script>
+	<script src="assets/js/jquery-migrate-1.2.1.min.js"></script>
+	<!-- Latest compiled and minified CSS -->
+	<link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+	<!--<script type='text/javascript' src='http://localhost/dev/simplemvc/simple.mvc.js'></script>-->
+	<script type='text/javascript' src='http://rawgit.com/bnji/simplemvc/master/simple.mvc.js'></script>
+	<script type='text/javascript' src='http://rawgit.com/bnji/simplemvc/master/simple.mvc.json.js'></script>
+	<script src="http://rawgit.com/bnji/simplemvc/master/examples/debug.js"></script>
+	<script src="assets/js/json2.js"></script>
+	<script type="text/javascript"> if (!window['console']) console = {log: function() {}}; </script>
+    <script>
+    //$ = {}
+    </script>
+    <!--//end IE fixes -->
+
+</head>
+<body>
+	<!--[if lt IE 10]>
+	    <p class="chromeframe">You are using an outdated browser. <a href="http://browsehappy.com/">Upgrade your browser today</a> or <a href="http://www.google.com/chromeframe/?redirect=true">install Google Chrome Frame</a> to better experience this site.</p>
+	<![endif]-->
+
+	<script>
+	$(function() {
+		var apikey = '5rGW1qChsfcmLhKcj8e0EnOpF72K0XtXYYtOw9OfoTdwNXoQ';
+		var url = 'http://api.xively.com/v2/feeds/1322305642';
+
+		setInterval(function() {
+			$.ajax({
+			    type: 'GET',
+			    cache: false,
+			    crossDomain: true,
+			    dataType: 'json',
+			    url: url,
+			    headers: {'X-ApiKey': apikey},
+			    success: function(json) {
+			      $('body').html(json['datastreams'][0]['current_value']);
+			    },
+			    error: function(xhr, status, errorThrown) {
+			      //alert(errorThrown+'\n'+status+'\n'+xhr.statusText);
+			    }
+		  	});
+		}, 5000);
+	});
+	</script>
+
+	<script src="assets/js/bootstrap-3.2.0.min.js"></script>
+	<script src="assets/js/jquery.xml2json.js"></script>
+    <script src="http://rawgit.com/bnji/simplemvc/master/lib/jstorage.min.js"></script>
+    <script src="assets/js/store.js"></script>
+</body>
+</html>
